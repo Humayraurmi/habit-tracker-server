@@ -31,7 +31,22 @@ async function run() {
         const db = client.db('habit_db');
         const habitsCollection = db.collection('habits');
         const usersCollection = db.collection('users');
+        const benefitsCollection = db.collection('benefits');
 
+        //benefits api
+        app.get('/benefits', async(req,res)=>{
+            const cursor = benefitsCollection.find();
+            const result = await cursor.toArray();
+            res.send(result);
+        })
+
+        app.post('/benefits', async(req,res)=>{
+            const newBenefits = req.body;
+            const result = await benefitsCollection.insertOne(newBenefits);
+            res.send(result);
+        })
+
+        //users api
         app.post('/users', async (req, res) => {
             const newUser = req.body;
             const email = req.body.email;
@@ -47,7 +62,14 @@ async function run() {
 
         })
 
+        //habits api
         app.get('/habits', async (req, res) => {
+            const cursor = habitsCollection.find().sort({ createdAt: -1 });
+            const result = await cursor.toArray();
+            res.send(result);
+        })
+
+        app.get('/featured-habits', async (req, res) => {
             const cursor = habitsCollection.find().sort({ createdAt: -1 }).limit(6);
             const result = await cursor.toArray();
             res.send(result);
