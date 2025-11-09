@@ -32,6 +32,20 @@ async function run() {
         const habitsCollection = db.collection('habits');
         const usersCollection = db.collection('users');
         const benefitsCollection = db.collection('benefits');
+        const stepsCollection = db.collection('steps');
+
+        //steps api
+        app.get('/how-it-works', async(req,res)=>{
+            const cursor = stepsCollection.find();
+            const result = await cursor.toArray();
+            res.send(result);
+        })
+
+        app.post('/how-it-works', async(req,res)=>{
+            const newSteps = req.body;
+            const result = await stepsCollection.insertOne(newSteps);
+            res.send(result);
+        })
 
         //benefits api
         app.get('/benefits', async(req,res)=>{
