@@ -131,20 +131,21 @@ async function run() {
         app.get('/my-habits', async (req, res) => {
             const email = req.query.email;
             if (!email) {
-                return res.send({ message: 'User email is required' });
+                return res.status(400).send({ message: 'User email is required' });
             }
             try {
-                const query = { email: email };
+                const query = {
+                    userEmail: { $regex: new RegExp(`^${email}$`, 'i') }
+                };
                 const cursor = habitsCollection.find(query).sort({ createdAt: -1 });
                 const result = await cursor.toArray();
-                res.send(result);
+                return res.status(200).send(result);
+
             } catch (error) {
                 console.error("Error:", error);
-                res.send({ message: 'Failed to fetch habits' });
+                return res.status(500).send({ message: 'Failed to fetch habits' });
             }
         });
-
-
 
         app.delete('/habits/:id', async (req, res) => {
             const id = req.params.id;
