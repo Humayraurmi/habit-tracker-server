@@ -98,10 +98,18 @@ async function run() {
         })
 
         app.get('/featured-habits', async (req, res) => {
-            const cursor = habitsCollection.find().sort({ createdAt: -1 }).limit(6);
-            const result = await cursor.toArray();
-            res.send(result);
-        })
+            try {
+
+                const query = { is_public: true };
+                const cursor = habitsCollection.find(query).sort({ createdAt: -1 }).limit(6);
+                const result = await cursor.toArray();
+                res.send(result);
+            } catch (error) {
+                console.error("Error fetching featured habits:", error);
+                res.status(500).send({ message: 'Failed to fetch featured habits' });
+            }
+        });
+
 
         app.get('/habits/:id', async (req, res) => {
             const id = req.params.id;
