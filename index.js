@@ -36,39 +36,39 @@ async function run() {
         const testimonialsCollection = db.collection('testimonials');
 
         //testimonials api
-        app.get('/testimonials', async(req,res)=>{
+        app.get('/testimonials', async (req, res) => {
             const cursor = testimonialsCollection.find();
             const result = await cursor.toArray();
             res.send(result);
         })
 
-        app.post('/testimonials', async(req,res)=>{
+        app.post('/testimonials', async (req, res) => {
             const newTestimonials = req.body;
             const result = await testimonialsCollection.insertOne(newTestimonials);
             res.send(result);
         })
 
         //steps api
-        app.get('/how-it-works', async(req,res)=>{
+        app.get('/how-it-works', async (req, res) => {
             const cursor = stepsCollection.find();
             const result = await cursor.toArray();
             res.send(result);
         })
 
-        app.post('/how-it-works', async(req,res)=>{
+        app.post('/how-it-works', async (req, res) => {
             const newSteps = req.body;
             const result = await stepsCollection.insertOne(newSteps);
             res.send(result);
         })
 
         //benefits api
-        app.get('/benefits', async(req,res)=>{
+        app.get('/benefits', async (req, res) => {
             const cursor = benefitsCollection.find();
             const result = await cursor.toArray();
             res.send(result);
         })
 
-        app.post('/benefits', async(req,res)=>{
+        app.post('/benefits', async (req, res) => {
             const newBenefits = req.body;
             const result = await benefitsCollection.insertOne(newBenefits);
             res.send(result);
@@ -81,7 +81,7 @@ async function run() {
             const query = { email: email }
             const existingUser = await usersCollection.findOne(query);
             if (existingUser) {
-                res.send({message: 'user already existingUser.Do not need to insert again'})
+                res.send({ message: 'user already existingUser.Do not need to insert again' })
             }
             else {
                 const result = await usersCollection.insertOne(newUser);
@@ -123,9 +123,26 @@ async function run() {
             const update = {
                 $set: updatedHabit
             }
-            const result = await habitsCollection.updateOne(query,update);
+            const result = await habitsCollection.updateOne(query, update);
             res.send(result);
         })
+
+        //my habits api
+        app.get('/my-habits', async (req, res) => {
+            const email = req.query.email;
+            if (!email) {
+                return res.send({ message: 'User email is required' });
+            }
+            try {
+                const query = { email: email };
+                const cursor = habitsCollection.find(query).sort({ createdAt: -1 });
+                const result = await cursor.toArray();
+                res.send(result);
+            } catch (error) {
+                console.error("Error:", error);
+                res.send({ message: 'Failed to fetch habits' });
+            }
+        });
 
 
 
