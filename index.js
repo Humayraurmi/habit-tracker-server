@@ -33,6 +33,20 @@ async function run() {
         const usersCollection = db.collection('users');
         const benefitsCollection = db.collection('benefits');
         const stepsCollection = db.collection('steps');
+        const testimonialsCollection = db.collection('testimonials');
+
+        //testimonials api
+        app.get('/testimonials', async(req,res)=>{
+            const cursor = testimonialsCollection.find();
+            const result = await cursor.toArray();
+            res.send(result);
+        })
+
+        app.post('/testimonials', async(req,res)=>{
+            const newTestimonials = req.body;
+            const result = await testimonialsCollection.insertOne(newTestimonials);
+            res.send(result);
+        })
 
         //steps api
         app.get('/how-it-works', async(req,res)=>{
@@ -101,6 +115,19 @@ async function run() {
             const result = await habitsCollection.insertOne(newHabit);
             res.send(result);
         })
+
+        app.patch('/habits/:id', async (req, res) => {
+            const id = req.params.id;
+            const updatedHabit = req.body;
+            const query = { _id: new ObjectId(id) }
+            const update = {
+                $set: updatedHabit
+            }
+            const result = await habitsCollection.updateOne(query,update);
+            res.send(result);
+        })
+
+
 
         app.delete('/habits/:id', async (req, res) => {
             const id = req.params.id;
