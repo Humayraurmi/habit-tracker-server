@@ -147,6 +147,46 @@ async function run() {
             }
         });
 
+        //task complete api
+        app.patch('/habits/complete/:id', async (req, res) => {
+            const id = req.params.id;
+            const today = new Date();
+            const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+            try {
+                const habit = await habitsCollection.findOne({ _id: new ObjectId(id) });
+
+                if (!habit) {
+                    return res.status(404).send({ message: 'Habit not found.' });
+                }
+
+                const alreadyCompletedToday = habit.completionHistory && habit.completionHistory.some(dateStr => {
+                    const entryDate = new Date(dateStr);
+                    return entryDate >= startOfToday;
+                });
+
+                if (alreadyCompletedToday) {
+                    return res.status(200).send({ modifiedCount: 0, message: 'Habit already completed today.' });
+                }
+                const result = await habitsCollection.updateOne(
+                    { _id: new ObjectId(id) },
+                    {
+                        $push: { completionHistory: new Date().toISOString() }
+                    }
+                );
+
+                if (result.modifiedCount > 0) {
+                    res.send({ success: true, message: 'Habit marked complete for today!', modifiedCount: result.modifiedCount });
+                } else {
+                    res.status(500).send({ message: 'Failed to update habit.' });
+                }
+
+            } catch (error) {
+                console.error("Mark Complete error:", error);
+                res.status(500).send({ message: 'An error occurred.' });
+            }
+        });
+
         app.delete('/habits/:id', async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) }
