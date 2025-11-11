@@ -118,8 +118,19 @@ async function run() {
             res.send(result);
         })
 
+        app.get('/public-habits', async (req, res) => {
+            const query = { is_public: true };
+            const cursor = habitsCollection.find(query).sort({ createdAt: -1 });
+            const result = await cursor.toArray();
+            res.send(result);
+        });
+
+
         app.post('/habits', async (req, res) => {
-            const newHabit = req.body;
+            const newHabit = {
+                ...req.body,
+                completionHistory: [] 
+            };
             const result = await habitsCollection.insertOne(newHabit);
             res.send(result);
         })
@@ -143,7 +154,7 @@ async function run() {
             }
             try {
                 const query = {
-                    userEmail: { $regex: new RegExp(`^${email}$`, 'i') }
+                    userEmail: email
                 };
                 const cursor = habitsCollection.find(query).sort({ createdAt: -1 });
                 const result = await cursor.toArray();
@@ -158,42 +169,82 @@ async function run() {
         //task complete api
         app.patch('/habits/complete/:id', async (req, res) => {
             const id = req.params.id;
+            const { userEmail, userName } = req.body;
             const today = new Date();
             const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
             try {
                 const habit = await habitsCollection.findOne({ _id: new ObjectId(id) });
+                if (!habit) return res.status(404).send({ message: 'Habit not found.' });
 
-                if (!habit) {
-                    return res.status(404).send({ message: 'Habit not found.' });
+                if (habit.is_public === true) {
+                    const userHabitExists = await habitsCollection.findOne({
+                        originalHabitId: id,
+                        userEmail
+                    });
+
+                    if (!userHabitExists) {
+                        const userHabit = {
+                            ...habit,
+                            originalHabitId: id,
+                            userEmail,
+                            userName,
+                            is_public: false, 
+                            completionHistory: [new Date().toISOString()],
+                            createdAt: new Date(),
+                        };
+
+                        delete userHabit._id;
+
+                        const insertResult = await habitsCollection.insertOne(userHabit); 
+
+                        return res.send({
+                            success: true,
+                            isNewHabit: true,
+                            newHabitId: insertResult.insertedId, 
+                            message: 'Private habit created for user. Redirecting to My Habits.'
+                        });
+                    }
+                    const alreadyCompletedToday = userHabitExists.completionHistory?.some(dateStr => {
+                        const entryDate = new Date(dateStr);
+                        return entryDate >= startOfToday;
+                    });
+
+                    if (alreadyCompletedToday) {
+                        return res.send({ modifiedCount: 0, message: 'Already completed today.' });
+                    }
+
+                    const updateResult = await habitsCollection.updateOne(
+                        { _id: userHabitExists._id },
+                        { $push: { completionHistory: new Date().toISOString() } }
+                    );
+
+                    return res.send({ success: true, modifiedCount: updateResult.modifiedCount });
                 }
 
-                const alreadyCompletedToday = habit.completionHistory && habit.completionHistory.some(dateStr => {
+                const alreadyCompletedToday = habit.completionHistory?.some(dateStr => {
                     const entryDate = new Date(dateStr);
                     return entryDate >= startOfToday;
                 });
 
                 if (alreadyCompletedToday) {
-                    return res.status(200).send({ modifiedCount: 0, message: 'Habit already completed today.' });
+                    return res.status(200).send({ modifiedCount: 0, message: 'Already completed today.' });
                 }
-                const result = await habitsCollection.updateOne(
+
+                const updateResult = await habitsCollection.updateOne(
                     { _id: new ObjectId(id) },
-                    {
-                        $push: { completionHistory: new Date().toISOString() }
-                    }
+                    { $push: { completionHistory: new Date().toISOString() } }
                 );
 
-                if (result.modifiedCount > 0) {
-                    res.send({ success: true, message: 'Habit marked complete for today!', modifiedCount: result.modifiedCount });
-                } else {
-                    res.status(500).send({ message: 'Failed to update habit.' });
-                }
+                res.send({ success: true, modifiedCount: updateResult.modifiedCount });
 
             } catch (error) {
                 console.error("Mark Complete error:", error);
                 res.status(500).send({ message: 'An error occurred.' });
             }
         });
+
+
 
         app.delete('/habits/:id', async (req, res) => {
             const id = req.params.id;
